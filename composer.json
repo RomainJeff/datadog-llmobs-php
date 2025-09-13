@@ -1,0 +1,51 @@
+{
+    "name": "datadog/llm-observability-php",
+    "description": "PHP library for tracing LLM calls and sending them to Datadog LLM Observability",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Datadog",
+            "email": "dev@datadoghq.com"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "openai-php/client": "^0.8",
+        "psr/http-client": "^1.0",
+        "psr/http-factory": "^1.0",
+        "psr/http-message": "^1.0",
+        "psr/log": "^3.0",
+        "guzzlehttp/guzzle": "^7.0",
+        "ramsey/uuid": "^4.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "phpstan/phpstan": "^1.0",
+        "squizlabs/php_codesniffer": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Datadog\\LLMObservability\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Datadog\\LLMObservability\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "phpstan": "phpstan analyse",
+        "cs-check": "phpcs --standard=PSR12 src/",
+        "cs-fix": "phpcbf --standard=PSR12 src/"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
