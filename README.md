@@ -37,8 +37,9 @@ $tracer = new DatadogLLMTracer($httpClient, $configuration);
 // Create OpenAI client
 $openAIClient = OpenAIClient::create($_ENV['OPENAI_API_KEY']);
 
-// Create a trace
-$tracer->createTrace('my-workflow');
+// Create a trace with input data
+$traceInput = ['user_id' => '12345', 'request_type' => 'weather_lookup'];
+$tracer->createTrace('my-workflow', $traceInput);
 
 // For LLM calls, use span lifecycle for accurate timing
 $inputMessages = [
@@ -78,8 +79,9 @@ try {
 } 
 
 
-// End the trace and send to Datadog
-$tracer->endTrace();
+// End the trace with output data and send to Datadog
+$traceOutput = ['weather_info' => 'Sunny, 22°C', 'location' => 'London, UK'];
+$tracer->endTrace($traceOutput);
 $tracer->flush();
 
 ```
@@ -98,7 +100,7 @@ $openAIClient = OpenAIClient::create($_ENV['OPENAI_API_KEY']);
 // Wrap with tracing
 $tracedClient = TracedOpenAIFactory::create($openAIClient, $tracer);
 
-$tracer->createTrace('chat-session');
+$tracer->createTrace('chat-session', ['user_session' => 'abc123']);
 
 // This call will be automatically traced
 $response = $tracedClient->chat()->create([
@@ -110,7 +112,7 @@ $response = $tracedClient->chat()->create([
     'max_completion_tokens' => 100
 ]);
 
-$tracer->endTrace();
+$tracer->endTrace(['response_generated' => true, 'message_count' => 1]);
 $tracer->flush();
 ```
 
@@ -119,8 +121,8 @@ $tracer->flush();
 ### TracerInterface
 
 #### Trace Management
-- `createTrace(string $name, ?string $sessionId = null): string` - Create a new trace
-- `endTrace(): void` - End the current trace
+- `createTrace(string $name, array $input = [], ?string $sessionId = null): string` - Create a new trace with optional input data
+- `endTrace(array $output = []): void` - End the current trace with optional output data
 - `flush(): bool` - Send all collected spans to Datadog
 
 #### Span Management

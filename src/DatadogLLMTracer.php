@@ -31,7 +31,7 @@ final class DatadogLLMTracer implements TracerInterface
         $this->sessionId = $configuration->getSessionId();
     }
 
-    public function createTrace(string $name, ?string $sessionId = null): string
+    public function createTrace(string $name, array $input = [], ?string $sessionId = null): string
     {
         if ($this->currentTrace !== null && $this->currentTrace->isActive()) {
             throw new \RuntimeException('A trace is already active. End the current trace before creating a new one.');
@@ -39,6 +39,21 @@ final class DatadogLLMTracer implements TracerInterface
 
         $traceId = str_replace('-', '', Uuid::uuid4()->toString());
         $this->currentTrace = new Trace($name, $traceId, $sessionId ?? $this->sessionId);
+
+        // Create empty parent span for the trace
+        $rootSpan = SpanFactory::create(
+            $name,
+            $traceId,
+            'workflow',
+            ['value' => json_encode($input)],
+            [],
+            [],
+            null,
+            null // No parent ID - this is the root span
+        );
+
+        // Don't set end time yet - will be calculated when trace ends
+        $this->currentTrace->addSpan($rootSpan);
 
         return $traceId;
     }
@@ -76,10 +91,21 @@ final class DatadogLLMTracer implements TracerInterface
         return $span->getSpanId();
     }
 
-    public function endTrace(): void
+    public function endTrace(array $output = []): void
     {
         if ($this->currentTrace === null) {
             throw new \RuntimeException('No active trace to end.');
+        }
+
+        // Set end time and output for root span (first span) based on current time
+        $currentNs = (int)(microtime(true) * 1_000_000_000);
+        $spans = $this->currentTrace->getSpans();
+
+        if (!empty($spans)) {
+            $spans[0]->setEndTime($currentNs);
+            if (!empty($output)) {
+                $spans[0]->setOutput(['value' => json_encode($output)]);
+            }
         }
 
         $this->currentTrace->end();

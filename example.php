@@ -18,7 +18,7 @@ $tracer = new DatadogLLMTracer($httpClient, $configuration);
 $openAIClient = OpenAI::client(getenv('OPENAI_API_KEY'));
 $tracedOpenAIClient = TracedOpenAIFactory::create($openAIClient, $tracer);
 
-$tracer->createTrace('discussion');
+$tracer->createTrace('weather-discussion', ['weather' => '20°C and sunny']);
 
 try {
     $response1 = $tracedOpenAIClient->chat()->create([
@@ -33,7 +33,7 @@ try {
                 'content' => 'What should I wear today if it\'s 20°C and sunny?'
             ]
         ]
-    ]);
+    ], 'weather-dressing-recommendation');
 
     echo "First response: " . $response1->choices[0]->message->content . "\n";
 
@@ -89,7 +89,7 @@ try {
                 ]
             ]
         ]
-    ]);
+    ], 'weather-dressing-recommendation-structured');
 
     echo "Structured response: " . $structuredResponse->choices[0]->message->content . "\n";
 
@@ -97,5 +97,5 @@ try {
     echo "Error: " . $e->getMessage() . "\n";
 }
 
-$tracer->endTrace();
+$tracer->endTrace(['recommendation' => '...']);
 $tracer->flush();

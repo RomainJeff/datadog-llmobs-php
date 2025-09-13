@@ -42,12 +42,8 @@ final class Trace implements TraceInterface
 
     public function getCurrentParentId(): ?string
     {
-        if (empty($this->spans)) {
-            return null;
-        }
-
-        $lastSpan = end($this->spans);
-        return $lastSpan->getSpanId();
+        // Return the root span ID if we have one (should be the first span added)
+        return $this->rootSpanId;
     }
 
     public function addSpan(SpanInterface $span): void

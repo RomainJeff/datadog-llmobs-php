@@ -44,16 +44,38 @@ final class TracedChatResource
     ) {
     }
 
-    public function create(array $parameters): CreateResponse
+    public function create(array $parameters, ?string $spanName = null): CreateResponse
     {
-        $startTime = (int)(microtime(true) * 1_000_000_000);
-
         $inputMessages = $parameters['messages'] ?? [];
         $model = $parameters['model'] ?? 'unknown';
 
+        $metadata = [
+            'model_name' => $model,
+            'model_provider' => 'openai',
+        ];
+
+        if (isset($parameters['temperature'])) {
+            $metadata['temperature'] = $parameters['temperature'];
+        }
+
+        if (isset($parameters['max_tokens'])) {
+            $metadata['max_tokens'] = $parameters['max_tokens'];
+        }
+
+        if (isset($parameters['max_completion_tokens'])) {
+            $metadata['max_tokens'] = $parameters['max_completion_tokens'];
+        }
+
+        // Start the span before making the API call
+        $spanId = $this->tracer->startSpan(
+            $spanName ?? 'openai.chat.completions.create',
+            'llm',
+            ['messages' => $inputMessages],
+            $metadata
+        );
+
         try {
             $response = $this->chat->create($parameters);
-            $endTime = (int)(microtime(true) * 1_000_000_000);
 
             $outputMessages = [];
             if ($response->choices) {
@@ -65,23 +87,6 @@ final class TracedChatResource
                         ];
                     }
                 }
-            }
-
-            $metadata = [
-                'model_name' => $model,
-                'model_provider' => 'openai',
-            ];
-
-            if (isset($parameters['temperature'])) {
-                $metadata['temperature'] = $parameters['temperature'];
-            }
-
-            if (isset($parameters['max_tokens'])) {
-                $metadata['max_tokens'] = $parameters['max_tokens'];
-            }
-
-            if (isset($parameters['max_completion_tokens'])) {
-                $metadata['max_tokens'] = $parameters['max_completion_tokens'];
             }
 
             $metrics = [];
@@ -97,30 +102,21 @@ final class TracedChatResource
                 }
             }
 
-            $spanId = $this->tracer->addSpan(
-                'openai.chat.completions.create',
-                'llm',
-                ['messages' => $inputMessages],
+            // End the span with the response output and metrics
+            $this->tracer->endSpan(
+                $spanId,
                 ['messages' => $outputMessages],
-                $metadata,
                 $metrics
             );
 
             return $response;
         } catch (\Throwable $e) {
-            $this->tracer->addSpan(
-                'openai.chat.completions.create',
-                'llm',
-                ['messages' => $inputMessages],
-                [],
-                [
-                    'model_name' => $model,
-                    'model_provider' => 'openai',
-                    'error' => [
-                        'message' => $e->getMessage(),
-                        'type' => get_class($e),
-                    ]
-                ]
+            // End the span with error
+            $this->tracer->endSpanWithError(
+                $spanId,
+                $e->getMessage(),
+                get_class($e),
+                $e->getTraceAsString()
             );
 
             throw $e;
