@@ -7,16 +7,15 @@ use Datadog\LLMObservability\Factories\TracedOpenAIFactory;
 use Datadog\LLMObservability\Http\DatadogApiClient;
 use Datadog\LLMObservability\Models\Configuration;
 
-$_ENV['DD_API_KEY'] = 'dd-api-key';
-$_ENV['DD_LLMOBS_ML_APP'] = 'weather-assistant-workflow';
-$_ENV['OPENAI_API_KEY'] = 'openai-api-key';
+$_ENV['DD_API_KEY'] = getenv('DD_API_KEY');
+$_ENV['DD_LLMOBS_ML_APP'] = getenv('DD_LLMOBS_ML_APP');
 
 $configuration = Configuration::fromEnvironment();
 
 $httpClient = new DatadogApiClient($configuration);
 $tracer = new DatadogLLMTracer($httpClient, $configuration);
 
-$openAIClient = OpenAI::client($_ENV['OPENAI_API_KEY']);
+$openAIClient = OpenAI::client(getenv('OPENAI_API_KEY'));
 $tracedOpenAIClient = TracedOpenAIFactory::create($openAIClient, $tracer);
 
 $tracer->createTrace('discussion');
