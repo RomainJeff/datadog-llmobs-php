@@ -6,7 +6,6 @@ namespace Datadog\LLMObservability\Factories;
 
 use Datadog\LLMObservability\Contracts\SpanInterface;
 use Datadog\LLMObservability\Models\Span;
-use Datadog\LLMObservability\Utils\TimeHelper;
 use Ramsey\Uuid\Uuid;
 
 final class SpanFactory
@@ -23,7 +22,7 @@ final class SpanFactory
         array $tags = []
     ): SpanInterface {
         $spanId = str_replace('-', '', Uuid::uuid4()->toString());
-        $startNs = TimeHelper::currentTimeNs();
+        $startNs = (int)(microtime(true) * 1_000_000_000);
 
         $meta = [
             'kind' => $kind,

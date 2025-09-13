@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Datadog\LLMObservability\Http;
 
 use Datadog\LLMObservability\Contracts\TracerInterface;
-use Datadog\LLMObservability\Utils\TimeHelper;
 use OpenAI\Client as OpenAIClient;
 use OpenAI\Resources\Chat;
 use OpenAI\Responses\Chat\CreateResponse;
@@ -47,14 +46,14 @@ final class TracedChatResource
 
     public function create(array $parameters): CreateResponse
     {
-        $startTime = TimeHelper::currentTimeNs();
+        $startTime = (int)(microtime(true) * 1_000_000_000);
 
         $inputMessages = $parameters['messages'] ?? [];
         $model = $parameters['model'] ?? 'unknown';
 
         try {
             $response = $this->chat->create($parameters);
-            $endTime = TimeHelper::currentTimeNs();
+            $endTime = (int)(microtime(true) * 1_000_000_000);
 
             $outputMessages = [];
             if ($response->choices) {

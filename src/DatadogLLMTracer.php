@@ -11,7 +11,6 @@ use Datadog\LLMObservability\Contracts\TraceInterface;
 use Datadog\LLMObservability\Factories\SpanFactory;
 use Datadog\LLMObservability\Models\Configuration;
 use Datadog\LLMObservability\Models\Trace;
-use Datadog\LLMObservability\Utils\TimeHelper;
 use Ramsey\Uuid\Uuid;
 
 final class DatadogLLMTracer implements TracerInterface
@@ -69,7 +68,7 @@ final class DatadogLLMTracer implements TracerInterface
             $effectiveParentId
         );
 
-        $span->setEndTime(TimeHelper::currentTimeNs());
+        $span->setEndTime((int)(microtime(true) * 1_000_000_000));
 
         $this->currentTrace->addSpan($span);
 
