@@ -13,8 +13,6 @@ Set the following environment variables:
 export DD_API_KEY="your-datadog-api-key"
 export DD_LLMOBS_ML_APP="your-app-name"
 export DD_TAGS="service:weather-bot,env:production"
-export DD_LLMOBS_SESSION_ID="optional-session-id"
-export OPENAI_API_KEY="your-openai-api-key"
 ```
 
 ## Usage
