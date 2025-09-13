@@ -2,6 +2,9 @@
 
 A PHP library for tracing LLM calls and sending them to Datadog LLM Observability.
 
+>[!WARNING]
+>This is for DEMO only, huge work in progress
+
 ## Features
 
 - ✅ Trace chat completions with automatic timing and token counting
