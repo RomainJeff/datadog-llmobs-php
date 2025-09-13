@@ -18,84 +18,76 @@ $tracer = new DatadogLLMTracer($httpClient, $configuration);
 $openAIClient = OpenAI::client(getenv('OPENAI_API_KEY'));
 $tracedOpenAIClient = TracedOpenAIFactory::create($openAIClient, $tracer);
 
-$tracer->createTrace('weather-discussion', ['weather' => '20°C and sunny']);
-
-try {
-    $response1 = $tracedOpenAIClient->chat()->create([
+function analyzeText(string $text): string
+{
+    global $tracedOpenAIClient;
+    $response = $tracedOpenAIClient->chat()->create([
         'model' => 'gpt-5-mini',
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'You are a weather assistant. Help users with weather-related questions.'
+                'content' => 'You are a text analysis assistant. Help users with text analysis questions.'
             ],
             [
                 'role' => 'user',
-                'content' => 'What should I wear today if it\'s 20°C and sunny?'
+                'content' => 'Analyze the following text: ' . $text
             ]
         ]
-    ], 'weather-dressing-recommendation');
+    ], 'text-analysis');
+    return $response->choices[0]->message->content;
+}
 
-    echo "First response: " . $response1->choices[0]->message->content . "\n";
-
-    // Example with structured output
-    $structuredResponse = $tracedOpenAIClient->chat()->create([
+function extractInfoFromText(string $text): string
+{
+    global $tracedOpenAIClient;
+    $response = $tracedOpenAIClient->chat()->create([
         'model' => 'gpt-5-mini',
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'You are a weather analysis assistant that provides structured weather recommendations.'
+                'content' => 'You are a text analysis assistant that provides structured text analysis.'
             ],
             [
                 'role' => 'user',
-                'content' => 'Analyze the weather for a 25°C sunny day and provide clothing and activity recommendations.'
+                'content' => 'Extract key information from the text: ' . $text
             ]
         ],
         'response_format' => [
             'type' => 'json_schema',
             'json_schema' => [
-                'name' => 'weather_recommendation',
+                'name' => 'info_extraction',
                 'schema' => [
                     'type' => 'object',
                     'properties' => [
-                        'weather_analysis' => [
-                            'type' => 'object',
-                            'properties' => [
-                                'temperature' => ['type' => 'number'],
-                                'condition' => ['type' => 'string'],
-                                'comfort_level' => ['type' => 'string', 'enum' => ['cold', 'cool', 'comfortable', 'warm', 'hot']]
-                            ],
-                            'required' => ['temperature', 'condition', 'comfort_level'],
-                            'additionalProperties' => false
-                        ],
-                        'clothing_recommendations' => [
+                        'info' => [
                             'type' => 'array',
                             'items' => ['type' => 'string']
-                        ],
-                        'activity_suggestions' => [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'object',
-                                'properties' => [
-                                    'activity' => ['type' => 'string'],
-                                    'suitability' => ['type' => 'string', 'enum' => ['excellent', 'good', 'fair', 'poor']]
-                                ],
-                                'required' => ['activity', 'suitability'],
-                                'additionalProperties' => false
-                            ]
                         ]
                     ],
-                    'required' => ['weather_analysis', 'clothing_recommendations', 'activity_suggestions'],
+                    'required' => ['info'],
                     'additionalProperties' => false
                 ]
             ]
         ]
-    ], 'weather-dressing-recommendation-structured');
-
-    echo "Structured response: " . $structuredResponse->choices[0]->message->content . "\n";
-
-} catch (Exception $e) {
-    echo "Error: " . $e->getMessage() . "\n";
+    ], 'info-extraction');
+    return $response->choices[0]->message->content;
 }
 
-$tracer->endTrace(['recommendation' => '...']);
+$textToAnalyze = "William Shakespeare was an English playwright, poet and actor. He is widely regarded as the greatest writer in the English language and the world's pre-eminent dramatist. He is often called England's national poet and the 'Bard of Avon' or simply 'the Bard'.";
+
+$tracer->createTrace('text-analysis', ['text' => $textToAnalyze]);
+
+try {
+    $textAnalysis = analyzeText($textToAnalyze);
+    echo "First response: " . $textAnalysis . "\n";
+
+    $infoExtraction = extractInfoFromText($textToAnalyze);
+    echo "Structured response: " . $infoExtraction . "\n";
+
+    $tracer->endTrace(['textAnalysis' => $textAnalysis, 'infoExtraction' => $infoExtraction]);
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage() . "\n";
+    $tracer->endTrace();
+}
+
 $tracer->flush();
