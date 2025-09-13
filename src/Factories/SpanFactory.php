@@ -6,8 +6,8 @@ namespace Datadog\LLMObservability\Factories;
 
 use Datadog\LLMObservability\Contracts\SpanInterface;
 use Datadog\LLMObservability\Models\Span;
-use Datadog\LLMObservability\Utils\IdGenerator;
 use Datadog\LLMObservability\Utils\TimeHelper;
+use Ramsey\Uuid\Uuid;
 
 final class SpanFactory
 {
@@ -22,7 +22,7 @@ final class SpanFactory
         ?string $parentId = null,
         array $tags = []
     ): SpanInterface {
-        $spanId = IdGenerator::generateSpanId();
+        $spanId = str_replace('-', '', Uuid::uuid4()->toString());
         $startNs = TimeHelper::currentTimeNs();
 
         $meta = [

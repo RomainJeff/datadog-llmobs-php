@@ -11,8 +11,8 @@ use Datadog\LLMObservability\Contracts\TraceInterface;
 use Datadog\LLMObservability\Factories\SpanFactory;
 use Datadog\LLMObservability\Models\Configuration;
 use Datadog\LLMObservability\Models\Trace;
-use Datadog\LLMObservability\Utils\IdGenerator;
 use Datadog\LLMObservability\Utils\TimeHelper;
+use Ramsey\Uuid\Uuid;
 
 final class DatadogLLMTracer implements TracerInterface
 {
@@ -37,7 +37,7 @@ final class DatadogLLMTracer implements TracerInterface
             throw new \RuntimeException('A trace is already active. End the current trace before creating a new one.');
         }
 
-        $traceId = IdGenerator::generateTraceId();
+        $traceId = str_replace('-', '', Uuid::uuid4()->toString());
         $this->currentTrace = new Trace($name, $traceId, $sessionId ?? $this->sessionId);
 
         return $traceId;
