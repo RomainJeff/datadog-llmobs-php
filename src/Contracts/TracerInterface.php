@@ -18,6 +18,28 @@ interface TracerInterface
         ?string $parentId = null
     ): string;
 
+    public function startSpan(
+        string $name,
+        string $kind,
+        array $input = [],
+        array $metadata = [],
+        ?string $parentId = null
+    ): string;
+
+    public function endSpan(
+        string $spanId,
+        array $output = [],
+        ?array $metrics = null
+    ): void;
+
+    public function endSpanWithError(
+        string $spanId,
+        string $errorMessage,
+        ?string $errorType = null,
+        ?string $stack = null,
+        ?array $metrics = null
+    ): void;
+
     public function endTrace(): void;
 
     public function flush(): bool;

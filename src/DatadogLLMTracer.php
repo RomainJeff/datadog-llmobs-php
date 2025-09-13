@@ -17,6 +17,7 @@ final class DatadogLLMTracer implements TracerInterface
 {
     private ?TraceInterface $currentTrace = null;
     private array $completedSpans = [];
+    private array $activeSpans = [];
     private array $globalTags;
     private string $mlApp;
     private ?string $sessionId;
@@ -148,5 +149,98 @@ final class DatadogLLMTracer implements TracerInterface
     public function getPendingSpansCount(): int
     {
         return count($this->completedSpans);
+    }
+
+    public function startSpan(
+        string $name,
+        string $kind,
+        array $input = [],
+        array $metadata = [],
+        ?string $parentId = null
+    ): string {
+        if ($this->currentTrace === null || !$this->currentTrace->isActive()) {
+            throw new \RuntimeException('No active trace. Create a trace first using createTrace().');
+        }
+
+        $effectiveParentId = $parentId ?? $this->currentTrace->getCurrentParentId();
+
+        $span = SpanFactory::create(
+            $name,
+            $this->currentTrace->getTraceId(),
+            $kind,
+            $input,
+            [], // no output initially
+            $metadata,
+            null, // no metrics initially
+            $effectiveParentId
+        );
+
+        // Store in active spans instead of immediately completing
+        $this->activeSpans[$span->getSpanId()] = $span;
+
+        return $span->getSpanId();
+    }
+
+    public function endSpan(
+        string $spanId,
+        array $output = [],
+        ?array $metrics = null
+    ): void {
+        if (!isset($this->activeSpans[$spanId])) {
+            throw new \RuntimeException("No active span found with ID: $spanId");
+        }
+
+        $span = $this->activeSpans[$spanId];
+
+        // Update span with output and metrics
+        if (!empty($output)) {
+            $span->setOutput($output);
+        }
+
+        if ($metrics !== null) {
+            $span->setMetrics($metrics);
+        }
+
+        // Set end time
+        $span->setEndTime((int)(microtime(true) * 1_000_000_000));
+
+        // Move from active to completed
+        unset($this->activeSpans[$spanId]);
+        $this->completedSpans[] = $span;
+
+        // Add to current trace
+        $this->currentTrace->addSpan($span);
+    }
+
+    public function endSpanWithError(
+        string $spanId,
+        string $errorMessage,
+        ?string $errorType = null,
+        ?string $stack = null,
+        ?array $metrics = null
+    ): void {
+        if (!isset($this->activeSpans[$spanId])) {
+            throw new \RuntimeException("No active span found with ID: $spanId");
+        }
+
+        $span = $this->activeSpans[$spanId];
+
+        // Set error on span
+        $span->setError($errorMessage, $stack, $errorType);
+
+        // Set metrics if provided
+        if ($metrics !== null) {
+            $span->setMetrics($metrics);
+        }
+
+        // Set end time
+        $span->setEndTime((int)(microtime(true) * 1_000_000_000));
+
+        // Move from active to completed
+        unset($this->activeSpans[$spanId]);
+        $this->completedSpans[] = $span;
+
+        // Add to current trace
+        $this->currentTrace->addSpan($span);
     }
 }

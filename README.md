@@ -5,22 +5,6 @@ A PHP library for tracing LLM calls and sending them to Datadog LLM Observabilit
 >[!WARNING]
 >This is for DEMO only, huge work in progress
 
-## Features
-
-- ✅ Trace chat completions with automatic timing and token counting
-- ✅ Hierarchical span management with parent-child relationships
-- ✅ Automatic OpenAI client wrapping for seamless integration
-- ✅ PSR-compliant interfaces and logging
-- ✅ Configurable via environment variables
-- ✅ Support for custom metadata and metrics
-- ✅ Error handling and status tracking
-
-## Installation
-
-```bash
-composer require datadog/llm-observability-php
-```
-
 ## Configuration
 
 Set the following environment variables:
@@ -43,6 +27,7 @@ export OPENAI_API_KEY="your-openai-api-key"
 use Datadog\LLMObservability\DatadogLLMTracer;
 use Datadog\LLMObservability\Http\DatadogApiClient;
 use Datadog\LLMObservability\Models\Configuration;
+use OpenAI\Client as OpenAIClient;
 
 // Initialize configuration from environment
 $configuration = Configuration::fromEnvironment();
@@ -51,32 +36,54 @@ $configuration = Configuration::fromEnvironment();
 $httpClient = new DatadogApiClient($configuration);
 $tracer = new DatadogLLMTracer($httpClient, $configuration);
 
+// Create OpenAI client
+$openAIClient = OpenAIClient::create($_ENV['OPENAI_API_KEY']);
+
 // Create a trace
 $tracer->createTrace('my-workflow');
 
-// Add spans manually
-$tracer->addSpan('user-query', 'agent', [
-    'value' => 'What is the weather like today?'
-], [
-    'value' => 'It\'s sunny and 20°C'
-]);
-
-$tracer->addSpan('weather-lookup', 'llm', [
-    'messages' => [
-        ['role' => 'user', 'content' => 'Check weather for London']
-    ]
-], [
-    'messages' => [
-        ['role' => 'assistant', 'content' => 'Current weather in London: Sunny, 20°C']
-    ]
-], [
+// For LLM calls, use span lifecycle for accurate timing
+$inputMessages = [
+    ['role' => 'user', 'content' => 'Check weather for London']
+];
+$metadata = [
     'model_name' => 'gpt-3.5-turbo',
-    'model_provider' => 'openai'
-]);
+    'model_provider' => 'openai',
+    'temperature' => 0.7
+];
+
+$spanId = $tracer->startSpan('weather-lookup', 'llm', $inputMessages, $metadata);
+
+try {
+    // Make the actual LLM call
+    $response = $openAIClient->chat()->create([
+        'model' => 'gpt-3.5-turbo',
+        'messages' => $inputMessages,
+        'temperature' => 0.7
+    ]);
+
+    // Prepare output and metrics
+    $outputMessages = [
+        ['role' => 'assistant', 'content' => $response->choices[0]->message->content]
+    ];
+    $metrics = [
+        'input_tokens' => (float)$response->usage->promptTokens,
+        'output_tokens' => (float)$response->usage->completionTokens,
+        'total_tokens' => (float)$response->usage->totalTokens
+    ];
+
+    $tracer->endSpan($spanId, $outputMessages, $metrics);
+
+} catch (\Throwable $e) {
+    $tracer->endSpanWithError($spanId, $e->getMessage(), get_class($e));
+    // Handle error
+} 
+
 
 // End the trace and send to Datadog
 $tracer->endTrace();
 $tracer->flush();
+
 ```
 
 ### Automatic OpenAI Tracing
@@ -113,10 +120,18 @@ $tracer->flush();
 
 ### TracerInterface
 
+#### Trace Management
 - `createTrace(string $name, ?string $sessionId = null): string` - Create a new trace
-- `addSpan(string $name, string $kind, array $input, array $output, array $metadata, ?array $metrics, ?string $parentId): string` - Add a span to the current trace
 - `endTrace(): void` - End the current trace
 - `flush(): bool` - Send all collected spans to Datadog
+
+#### Span Management
+- `addSpan(string $name, string $kind, array $input, array $output, array $metadata, ?array $metrics, ?string $parentId): string` - Add a complete span to the current trace
+- `startSpan(string $name, string $kind, array $input, array $metadata, ?string $parentId): string` - Start a span and return its ID for later completion
+- `endSpan(string $spanId, array $output, ?array $metrics): void` - End a span with success data
+- `endSpanWithError(string $spanId, string $errorMessage, ?string $errorType, ?string $stack, ?array $metrics): void` - End a span with error details
+
+#### Configuration
 - `setGlobalTags(array $tags): void` - Set global tags for all spans
 - `setMlApp(string $mlApp): void` - Set the ML application name
 - `setSessionId(string $sessionId): void` - Set the session ID

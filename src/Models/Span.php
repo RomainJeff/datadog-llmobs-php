@@ -18,8 +18,8 @@ final class Span implements SpanInterface
         private readonly string $traceId,
         private readonly ?string $parentId,
         private readonly int $startNs,
-        private readonly array $meta,
-        private readonly ?array $metrics = null,
+        private array $meta,
+        private ?array $metrics = null,
         private readonly array $tags = []
     ) {
         $this->endNs = $startNs;
@@ -99,6 +99,16 @@ final class Span implements SpanInterface
             'type' => $type,
         ]);
         $this->status = 'error';
+    }
+
+    public function setOutput(array $output): void
+    {
+        $this->meta['output'] = $output;
+    }
+
+    public function setMetrics(?array $metrics): void
+    {
+        $this->metrics = $metrics;
     }
 
     public function toArray(): array
