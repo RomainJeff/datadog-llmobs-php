@@ -6,7 +6,7 @@ namespace Datadog\LLMObservability\Contracts;
 
 interface TracerInterface
 {
-    public function createGroup(string $name, ?string $sessionId = null): string;
+    public function createTrace(string $name, ?string $sessionId = null): string;
 
     public function addSpan(
         string $name,
@@ -18,7 +18,7 @@ interface TracerInterface
         ?string $parentId = null
     ): string;
 
-    public function endGroup(): void;
+    public function endTrace(): void;
 
     public function flush(): bool;
 

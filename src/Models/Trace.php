@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Datadog\LLMObservability\Models;
 
 use Datadog\LLMObservability\Contracts\SpanInterface;
-use Datadog\LLMObservability\Contracts\TraceGroupInterface;
+use Datadog\LLMObservability\Contracts\TraceInterface;
 
-final class TraceGroup implements TraceGroupInterface
+final class Trace implements TraceInterface
 {
     private array $spans = [];
     private bool $active = true;
@@ -53,7 +53,7 @@ final class TraceGroup implements TraceGroupInterface
     public function addSpan(SpanInterface $span): void
     {
         if (!$this->active) {
-            throw new \RuntimeException('Cannot add span to inactive trace group');
+            throw new \RuntimeException('Cannot add span to inactive trace');
         }
 
         if ($this->rootSpanId === null && $span->getParentId() === null) {

@@ -51,8 +51,8 @@ $configuration = Configuration::fromEnvironment();
 $httpClient = new DatadogApiClient($configuration);
 $tracer = new DatadogLLMTracer($httpClient, $configuration);
 
-// Create a trace group
-$tracer->createGroup('my-workflow');
+// Create a trace
+$tracer->createTrace('my-workflow');
 
 // Add spans manually
 $tracer->addSpan('user-query', 'agent', [
@@ -74,8 +74,8 @@ $tracer->addSpan('weather-lookup', 'llm', [
     'model_provider' => 'openai'
 ]);
 
-// End the group and send to Datadog
-$tracer->endGroup();
+// End the trace and send to Datadog
+$tracer->endTrace();
 $tracer->flush();
 ```
 
@@ -93,7 +93,7 @@ $openAIClient = OpenAIClient::create($_ENV['OPENAI_API_KEY']);
 // Wrap with tracing
 $tracedClient = TracedOpenAIFactory::create($openAIClient, $tracer);
 
-$tracer->createGroup('chat-session');
+$tracer->createTrace('chat-session');
 
 // This call will be automatically traced
 $response = $tracedClient->chat()->create([
@@ -105,7 +105,7 @@ $response = $tracedClient->chat()->create([
     'max_completion_tokens' => 100
 ]);
 
-$tracer->endGroup();
+$tracer->endTrace();
 $tracer->flush();
 ```
 
@@ -113,9 +113,9 @@ $tracer->flush();
 
 ### TracerInterface
 
-- `createGroup(string $name, ?string $sessionId = null): string` - Create a new trace group
-- `addSpan(string $name, string $kind, array $input, array $output, array $metadata, ?array $metrics, ?string $parentId): string` - Add a span to the current group
-- `endGroup(): void` - End the current trace group
+- `createTrace(string $name, ?string $sessionId = null): string` - Create a new trace
+- `addSpan(string $name, string $kind, array $input, array $output, array $metadata, ?array $metrics, ?string $parentId): string` - Add a span to the current trace
+- `endTrace(): void` - End the current trace
 - `flush(): bool` - Send all collected spans to Datadog
 - `setGlobalTags(array $tags): void` - Set global tags for all spans
 - `setMlApp(string $mlApp): void` - Set the ML application name

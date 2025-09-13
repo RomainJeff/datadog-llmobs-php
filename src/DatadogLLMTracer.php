@@ -7,16 +7,16 @@ namespace Datadog\LLMObservability;
 use Datadog\LLMObservability\Contracts\HttpClientInterface;
 use Datadog\LLMObservability\Contracts\SpanInterface;
 use Datadog\LLMObservability\Contracts\TracerInterface;
-use Datadog\LLMObservability\Contracts\TraceGroupInterface;
+use Datadog\LLMObservability\Contracts\TraceInterface;
 use Datadog\LLMObservability\Factories\SpanFactory;
 use Datadog\LLMObservability\Models\Configuration;
-use Datadog\LLMObservability\Models\TraceGroup;
+use Datadog\LLMObservability\Models\Trace;
 use Datadog\LLMObservability\Utils\IdGenerator;
 use Datadog\LLMObservability\Utils\TimeHelper;
 
 final class DatadogLLMTracer implements TracerInterface
 {
-    private ?TraceGroupInterface $currentGroup = null;
+    private ?TraceInterface $currentTrace = null;
     private array $completedSpans = [];
     private array $globalTags;
     private string $mlApp;
@@ -31,14 +31,14 @@ final class DatadogLLMTracer implements TracerInterface
         $this->sessionId = $configuration->getSessionId();
     }
 
-    public function createGroup(string $name, ?string $sessionId = null): string
+    public function createTrace(string $name, ?string $sessionId = null): string
     {
-        if ($this->currentGroup !== null && $this->currentGroup->isActive()) {
-            throw new \RuntimeException('A trace group is already active. End the current group before creating a new one.');
+        if ($this->currentTrace !== null && $this->currentTrace->isActive()) {
+            throw new \RuntimeException('A trace is already active. End the current trace before creating a new one.');
         }
 
         $traceId = IdGenerator::generateTraceId();
-        $this->currentGroup = new TraceGroup($name, $traceId, $sessionId ?? $this->sessionId);
+        $this->currentTrace = new Trace($name, $traceId, $sessionId ?? $this->sessionId);
 
         return $traceId;
     }
@@ -52,15 +52,15 @@ final class DatadogLLMTracer implements TracerInterface
         ?array $metrics = null,
         ?string $parentId = null
     ): string {
-        if ($this->currentGroup === null || !$this->currentGroup->isActive()) {
-            throw new \RuntimeException('No active trace group. Create a group first using createGroup().');
+        if ($this->currentTrace === null || !$this->currentTrace->isActive()) {
+            throw new \RuntimeException('No active trace. Create a trace first using createTrace().');
         }
 
-        $effectiveParentId = $parentId ?? $this->currentGroup->getCurrentParentId();
+        $effectiveParentId = $parentId ?? $this->currentTrace->getCurrentParentId();
 
         $span = SpanFactory::create(
             $name,
-            $this->currentGroup->getTraceId(),
+            $this->currentTrace->getTraceId(),
             $kind,
             $input,
             $output,
@@ -71,24 +71,24 @@ final class DatadogLLMTracer implements TracerInterface
 
         $span->setEndTime(TimeHelper::currentTimeNs());
 
-        $this->currentGroup->addSpan($span);
+        $this->currentTrace->addSpan($span);
 
         return $span->getSpanId();
     }
 
-    public function endGroup(): void
+    public function endTrace(): void
     {
-        if ($this->currentGroup === null) {
-            throw new \RuntimeException('No active trace group to end.');
+        if ($this->currentTrace === null) {
+            throw new \RuntimeException('No active trace to end.');
         }
 
-        $this->currentGroup->end();
+        $this->currentTrace->end();
 
-        foreach ($this->currentGroup->getSpans() as $span) {
+        foreach ($this->currentTrace->getSpans() as $span) {
             $this->completedSpans[] = $span;
         }
 
-        $this->currentGroup = null;
+        $this->currentTrace = null;
     }
 
     public function flush(): bool
@@ -141,9 +141,9 @@ final class DatadogLLMTracer implements TracerInterface
         $this->sessionId = $sessionId;
     }
 
-    public function getCurrentGroup(): ?TraceGroupInterface
+    public function getCurrentTrace(): ?TraceInterface
     {
-        return $this->currentGroup;
+        return $this->currentTrace;
     }
 
     public function getPendingSpansCount(): int

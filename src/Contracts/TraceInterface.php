@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Datadog\LLMObservability\Contracts;
 
-interface TraceGroupInterface
+interface TraceInterface
 {
     public function getName(): string;
 

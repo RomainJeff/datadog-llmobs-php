@@ -19,7 +19,7 @@ $tracer = new DatadogLLMTracer($httpClient, $configuration);
 $openAIClient = OpenAI::client($_ENV['OPENAI_API_KEY']);
 $tracedOpenAIClient = TracedOpenAIFactory::create($openAIClient, $tracer);
 
-$tracer->createGroup('discussion');
+$tracer->createTrace('discussion');
 
 try {
     $response1 = $tracedOpenAIClient->chat()->create([
@@ -98,5 +98,5 @@ try {
     echo "Error: " . $e->getMessage() . "\n";
 }
 
-$tracer->endGroup();
+$tracer->endTrace();
 $tracer->flush();
